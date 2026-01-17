@@ -29,7 +29,7 @@
                         <input type="text" id="name" placeholder="Apple" required>
                         
                         <div class="flex-row">
-                            <div><label>Price (THB)</label><input type="number" id="price" placeholder="5" required></div>
+                            <div><label>Price (THB)</label><input type="float" id="price" placeholder="5" required></div>
                             <div><label>Stock</label><input type="number" id="stock" placeholder="100" required></div>
                         </div>
 
@@ -102,6 +102,11 @@
                 description: document.getElementById('desc').value,
                 stock: parseInt(document.getElementById('stock').value)
             };
+            if (product.name.trim() === '' || isNaN(product.price) || product.price < 0 || isNaN(product.stock) || product.stock < 0 || !Number.isInteger(product.stock)) {
+                alert("Please fill in all fields correctly.");
+                btn.disabled = false;
+                return;
+            }
             
             try {
                 const res = await fetch('/api/v1/products', {

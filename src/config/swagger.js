@@ -1,4 +1,5 @@
 const swaggerJsDoc = require('swagger-jsdoc');
+const PORT = process.env.PORT || 3000;
 
 const apiDefinition = {
   openapi: '3.0.0',
@@ -8,7 +9,7 @@ const apiDefinition = {
     description: 'API for E-commerce project'
   },
   servers: [
-    { url: 'http://localhost:3000/api/v1', description: 'Local Server' }
+    { url: `http://localhost:${PORT}/api/v1`, description: 'Local Server' }
   ],
   components: {
     securitySchemes: {
