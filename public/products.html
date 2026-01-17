@@ -22,103 +22,94 @@
       </div>
     </div>
 
-    <script>
-      async function loadProducts() {
-        const list = document.getElementById("product-list");
-        try {
-          const res = await fetch("/api/v1/products?t=" + new Date().getTime());
-          const products = await res.json();
+<script>
+        function getCartKey() {
+            const token = localStorage.getItem('token');
+            if (!token) return 'cart_guest';
 
-          list.innerHTML = "";
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return 'cart_' + (payload.userId || payload.id); 
+            } catch (e) {
+                return 'cart_guest';
+            }
+        }
 
-          if (products.length === 0) {
-            list.innerHTML = '<p class="loading-text">No products found.</p>';
-            return;
-          }
+        async function loadProducts() {
+            const list = document.getElementById('product-list');
+            try {
+                const res = await fetch('/api/v1/products?t=' + new Date().getTime());
+                const products = await res.json();
 
-          products.forEach((p) => {
-            const card = document.createElement("div");
+                list.innerHTML = ''; 
 
-            let stockClass = "stock";
-            let stockText = `📦 Stock: ${p.stock}`;
-            if (!p.stock || p.stock < 1) {
-                stockClass += " stock-low";
-                stockText = "📦 Stock: Out of Stock";
+                if (products.length === 0) {
+                    list.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">No products found.</p>';
+                    return;
+                }
+
+                products.forEach(p => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <h3>${p.name}</h3>
+                        <p>${p.description || 'No description'}</p>
+                        <div class="price">$${p.price}</div>
+                        <div class="stock">📦 Stock: ${p.stock}</div>
+                        <button class="btn" onclick="addToCart('${p._id}', '${p.name}', ${p.price}, ${p.stock})">Add to Cart 🛒</button>
+                    `;
+                    list.appendChild(card);
+                });
+                updateCartCount();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function addToCart(id, name, price, maxStock) {
+            let qty = prompt(`How many "${name}" do you want to buy? (Max: ${maxStock})`, "1");
+            if (qty === null || qty.trim() === "") return;
+
+            qty = parseInt(qty);
+            if (isNaN(qty) || qty < 1) return alert("Please enter a valid number.");
+
+            const cartKey = getCartKey(); 
+            let cart = JSON.parse(localStorage.getItem(cartKey)) || [];
+            
+            const existingItem = cart.find(item => item.id === id);
+            let currentQtyInCart = existingItem ? existingItem.quantity : 0;
+            
+            if ((currentQtyInCart + qty) > maxStock) {
+                return alert(`❌ Stock Error! You cannot add ${qty} more.`);
             }
 
-            card.className = "card";
-            card.innerHTML = `
-                <div>
-                    <h3>${p.name}</h3>
-                    <img src="https://placehold.co/300x200/png?text=${encodeURIComponent(p.name)}" 
-                        alt="${p.name}" class="card-img">
-                    <p>${p.description || "No description"}</p>
-                </div>
-                <div>
-                    <div class="price">${p.price} ฿</div>
-                    <div class="${stockClass}">${stockText}</div>
-                    <button class="btn" onclick="addToCart('${p._id}', '${p.name}', ${p.price}, ${p.stock})">Add to Cart 🛒</button>
-                </div>
-            `;
-            list.appendChild(card);
-          });
-          updateCartCount();
-        } catch (err) {
-          console.error(err);
-        }
-      }
-
-      function addToCart(id, name, price, maxStock) {
-        let qty = prompt(
-          `How many "${name}" do you want to buy? (Max: ${maxStock})`,
-          "1",
-        );
-
-        if (qty === null || qty.trim() === "") return;
-
-        qty = parseInt(qty);
-        if (isNaN(qty) || qty < 1) {
-          alert("Please enter a valid number (1 or more).");
-          return;
+            if (existingItem) {
+                existingItem.quantity += qty;
+            } else {
+                cart.push({ id, name, price, quantity: qty });
+            }
+            
+            localStorage.setItem(cartKey, JSON.stringify(cart));
+            
+            alert(`✅ Added ${qty} x ${name} to cart!`);
+            updateCartCount();
         }
 
-        let cart = JSON.parse(localStorage.getItem("cart")) || [];
-        const existingItem = cart.find((item) => item.id === id);
-
-        let currentQtyInCart = existingItem ? existingItem.quantity : 0;
-        let totalFutureQty = currentQtyInCart + qty;
-
-        if (totalFutureQty > maxStock) {
-          alert(
-            `❌ Stock Error!\n\nWe only have ${maxStock} in stock.\nYou already have ${currentQtyInCart} in your cart.\nYou cannot add ${qty} more.`,
-          );
-          return;
+        function updateCartCount() {
+            const cartKey = getCartKey();
+            const cart = JSON.parse(localStorage.getItem(cartKey)) || [];
+            const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+            
+            const badge = document.getElementById('cartCount');
+            if(totalCount > 0) {
+                badge.style.display = 'inline-block';
+                badge.innerText = totalCount;
+            } else {
+                badge.style.display = 'none';
+            }
         }
 
-        if (existingItem) {
-          existingItem.quantity += qty;
-        } else {
-          cart.push({ id, name, price, quantity: qty });
-        }
-
-        localStorage.setItem("cart", JSON.stringify(cart));
-        alert(`✅ Added ${qty} x ${name} to cart!`);
-        updateCartCount();
-      }
-
-      function updateCartCount() {
-        const cart = JSON.parse(localStorage.getItem("cart")) || [];
-        const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-        const badge = document.getElementById("cartCount");
-        if (totalCount > 0) {
-          badge.style.display = "inline-block";
-          badge.innerText = totalCount;
-        } else {
-          badge.style.display = "none";
-        }
-      }
-
-      loadProducts();
+        loadProducts();
     </script>
   </body>
 </html>

@@ -8,122 +8,134 @@
   <body class="bg-overlay bg-cart">
     <div class="container cart-container">
       <img
-          src="https://gifdb.com/images/high/emil-sinclair-limbus-company-gif-a1ov5zdxaj9djgqu.webp"
-          class="cart-icon"
-          alt="Cart"
-        />
+        src="https://gifdb.com/images/high/emil-sinclair-limbus-company-gif-a1ov5zdxaj9djgqu.webp"
+        class="cart-icon"
+        alt="Cart"
+      />
       <h1>Your Shopping Cart</h1>
 
       <div id="cart-items"></div>
 
       <div class="total-box">
-        Total: <span id="totalPrice" class="total-price">$0</span>
-        <br /><br />
+        Total: <span id="totalPrice" class="total-price">$0</span> <br /><br />
         <button onclick="checkout()" class="btn btn-checkout">
           Checkout Now
         </button>
         <br />
         <a href="/products.html" class="btn auto-width btn-continue">
-            ← Continue Shopping
+          ← Continue Shopping
         </a>
       </div>
     </div>
 
-    <script>
-      function loadCart() {
-        const cart = JSON.parse(localStorage.getItem("cart")) || [];
-        const container = document.getElementById("cart-items");
-        const totalEl = document.getElementById("totalPrice");
+<script>
+        function getCartKey() {
+            const token = localStorage.getItem('token');
+            if (!token) return 'cart_guest';
 
-        container.innerHTML = "";
-        let total = 0;
-
-        if (cart.length === 0) {
-          container.innerHTML = '<p class="empty-cart">Your cart is empty.</p>';
-          totalEl.innerText = "0 ฿";
-          return;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return 'cart_' + (payload.userId || payload.id);
+            } catch (e) {
+                return 'cart_guest';
+            }
         }
 
-        cart.forEach((item, index) => {
-          const lineTotal = item.price * item.quantity;
-          total += lineTotal;
+        function loadCart() {
+            const cartKey = getCartKey();
+            const cart = JSON.parse(localStorage.getItem(cartKey)) || [];
+            
+            const container = document.getElementById('cart-items');
+            const totalEl = document.getElementById('totalPrice');
+            
+            container.innerHTML = '';
+            let total = 0;
 
-          container.innerHTML += `
+            if (cart.length === 0) {
+                container.innerHTML = '<p style="text-align:center">Your cart is empty.</p>';
+                totalEl.innerText = '$0';
+                return;
+            }
+
+            cart.forEach((item, index) => {
+                const lineTotal = item.price * item.quantity;
+                total += lineTotal;
+
+                container.innerHTML += `
                     <div class="cart-item">
                         <div>
                             <strong>${item.name}</strong> 
-                            <span class="cart-meta">(x${item.quantity})</span>
-                            <div class="cart-price-detail">
-                                ${item.price} ฿ each &nbsp;|&nbsp; <strong>Subtotal: ${lineTotal.toFixed(2)} ฿</strong>
+                            <span style="font-size:0.9em; color:#666; margin-left:10px;">(x${item.quantity})</span>
+                            <div style="font-size:0.9em; color:#28a745;">
+                                $${item.price} each &nbsp;|&nbsp; <strong>Subtotal: $${lineTotal.toFixed(2)}</strong>
                             </div>
                         </div>
                         <span class="remove-btn" onclick="removeItem(${index})">Remove All</span>
                     </div>
                 `;
-        });
+            });
 
-        totalEl.innerText = total.toFixed(2) + " ฿";
-      }
+            totalEl.innerText = '$' + total.toFixed(2);
+        }
 
-      function removeItem(index) {
-        if (!confirm("Remove this item completely?")) return;
-        let cart = JSON.parse(localStorage.getItem("cart")) || [];
-        cart.splice(index, 1);
-        localStorage.setItem("cart", JSON.stringify(cart));
+        function removeItem(index) {
+            if(!confirm("Remove this item?")) return;
+            
+            const cartKey = getCartKey();
+            let cart = JSON.parse(localStorage.getItem(cartKey)) || [];
+            
+            cart.splice(index, 1);
+            localStorage.setItem(cartKey, JSON.stringify(cart));
+            loadCart();
+        }
+
+        async function checkout() {
+            const cartKey = getCartKey();
+            const cart = JSON.parse(localStorage.getItem(cartKey)) || [];
+            const token = localStorage.getItem('token');
+
+            if (cart.length === 0) return alert('Cart is empty!');
+            if (!token) {
+                alert('Please login to checkout.');
+                window.location.href = '/login.html';
+                return;
+            }
+
+            const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            let productIds = [];
+            cart.forEach(item => {
+                for(let i=0; i < item.quantity; i++) productIds.push(item.id);
+            });
+
+            try {
+                const res = await fetch('/api/v1/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'idempotency-key': 'key_' + new Date().getTime()
+                    },
+                    body: JSON.stringify({
+                        totalAmount: totalAmount,
+                        products: productIds
+                    })
+                });
+
+                if (res.ok) {
+                    alert('🎉 Order Placed Successfully!');
+                    localStorage.removeItem(cartKey);
+                    window.location.href = '/products.html';
+                } else {
+                    const err = await res.json();
+                    alert('Checkout Failed: ' + (err.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Network Error');
+            }
+        }
+
         loadCart();
-      }
-
-      async function checkout() {
-        const cart = JSON.parse(localStorage.getItem("cart")) || [];
-        const token = localStorage.getItem("token");
-
-        if (cart.length === 0) return alert("Cart is empty!");
-        if (!token) {
-          alert("Please login to checkout.");
-          window.location.href = "/login.html";
-          return;
-        }
-
-        const totalAmount = cart.reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0,
-        );
-        let productIds = [];
-        cart.forEach((item) => {
-          for (let i = 0; i < item.quantity; i++) {
-            productIds.push(item.id);
-          }
-        });
-
-        try {
-          const res = await fetch("/api/v1/orders", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-              "idempotency-key": "key_" + new Date().getTime(),
-            },
-            body: JSON.stringify({
-              totalAmount: totalAmount,
-              products: productIds,
-            }),
-          });
-
-          if (res.ok) {
-            alert("Order Placed Successfully!");
-            localStorage.removeItem("cart");
-            window.location.href = "/products.html";
-          } else {
-            const err = await res.json();
-            alert("Checkout Failed: " + (err.error || "Unknown error"));
-          }
-        } catch (error) {
-          console.error(error);
-          alert("Network Error");
-        }
-      }
-
-      loadCart();
     </script>
   </body>
 </html>

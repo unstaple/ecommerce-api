@@ -1,5 +1,3 @@
-// Skibidi bop yes yes yes
-
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -28,7 +26,7 @@ app.get('/', (req, res) => {
 });
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 5 * 60 * 1000,
   max: 100,
   message: 'Too many requests, please try again later.'
 });
