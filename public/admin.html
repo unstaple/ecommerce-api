@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-page">
+    <nav class="navbar">
+        <h2 class="navbar-title">Admin Dashboard</h2>
+        <div class="navbar-right">
+            <a href="/" class="btn action-btn" style="color: #000000;">🏠 Home</a>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        
+        <div class="top-section">
+            <div class="side-panel">
+                <img src="https://tenor.com/view/yi-sang-yi-sang-limbus-company-limbus-company-netzach-lobotomy-corporation-gif-11849089351361920297.gif" alt="Manager">
+                <p>"Welcome back, Manager."</p>
+            </div>
+
+            <div class="work-area">
+                <div class="panel form-panel">
+                    <h3>Add New Item</h3>
+                    <form id="productForm">
+                        <label>Product Name</label>
+                        <input type="text" id="name" placeholder="Apple" required>
+                        
+                        <div class="flex-row">
+                            <div><label>Price (THB)</label><input type="number" id="price" placeholder="5" required></div>
+                            <div><label>Stock</label><input type="number" id="stock" placeholder="100" required></div>
+                        </div>
+
+                        <label>Description</label>
+                        <input type="text" id="desc" placeholder="Fresh fruit">
+                        
+                        <button type="submit" class="btn w-full btn-primary mt-10">Add Product</button>
+                    </form>
+                    <div id="message" class="status" style="text-align:center;"></div>
+                </div>
+
+                <div class="panel inventory-panel">
+                    <h3>Inventory</h3>
+                    <div class="inventory-wrapper">
+                        <table id="inventoryTable">
+                            <thead><tr><th>Product</th><th>Price</th><th>Stock</th><th>Actions</th></tr></thead>
+                            <tbody id="inventoryBody"><tr><td colspan="4">Loading...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="db-viewer-panel">
+            <h3 class="db-header">Database Viewer (JSON)</h3>
+            <div class="db-controls">
+                <button class="db-btn" onclick="viewData('products')">View Products</button>
+                <button class="db-btn" onclick="viewData('users')">View Users</button>
+                <button class="db-btn" onclick="viewData('orders')">View Orders</button>
+            </div>
+            <pre id="jsonDisplay">// Select a database collection above to view raw JSON data...</pre>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login.html';
+
+        async function loadInventory() {
+            try {
+                const res = await fetch('/api/v1/products?t=' + new Date().getTime());
+                const products = await res.json();
+                const tbody = document.getElementById('inventoryBody');
+                tbody.innerHTML = ''; 
+
+                products.forEach(p => {
+                    let stockClass = p.stock < 5 ? 'text-danger' : '';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${p.name}</strong></td>
+                            <td class="text-success" style="font-weight:bold;">${p.price} ฿</td>
+                            <td class="${stockClass}" style="font-weight:bold;">${p.stock}</td>
+                            <td>
+                                <button class="action-btn btn-primary" onclick="refillStock('${p._id}', ${p.stock})">Refill</button>
+                                <button class="action-btn btn-danger" onclick="deleteProduct('${p._id}', this)">Delete</button>
+                            </td>
+                        </tr>`;
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        document.getElementById('productForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.disabled = true; 
+            
+            const product = {
+                name: document.getElementById('name').value,
+                price: parseFloat(document.getElementById('price').value),
+                description: document.getElementById('desc').value,
+                stock: parseInt(document.getElementById('stock').value)
+            };
+            
+            try {
+                const res = await fetch('/api/v1/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(product)
+                });
+                if(res.ok) { 
+                    document.getElementById('productForm').reset();
+                    loadInventory();
+                    alert("✅ Created!");
+                } else {
+                    alert("❌ Failed.");
+                }
+            } catch (err) { alert("Network Error"); }
+            btn.disabled = false;
+        });
+
+        async function refillStock(id, currentStock) {
+            let addAmount = prompt(`Add how many items to stock? (Current: ${currentStock})`, "10");
+            if (addAmount === null) return;
+            
+            let newStock = currentStock + parseInt(addAmount);
+            if (isNaN(newStock) || newStock < 0) return alert("Invalid number");
+
+            await fetch(`/api/v1/products/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ stock: newStock })
+            });
+            loadInventory(); 
+        }
+
+        async function deleteProduct(id, btn) {
+            if(confirm('Delete this product?')) {
+                const res = await fetch(`/api/v1/products/${id}`, { 
+                    method: 'DELETE', 
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) btn.closest('tr').remove();
+            }
+        }
+
+        async function viewData(type) {
+            const display = document.getElementById('jsonDisplay');
+            display.innerText = "Loading " + type + "...";
+            
+            document.querySelectorAll('.db-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+
+            try {
+                const res = await fetch(`/api/v1/${type}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if(!res.ok) throw new Error("Failed to fetch data (Are you Admin?)");
+                
+                const data = await res.json();
+                display.innerText = JSON.stringify(data, null, 2);
+            } catch (err) {
+                display.innerText = "❌ Error: " + err.message;
+            }
+        }
+
+        loadInventory();
+    </script>
+</body>
+</html>

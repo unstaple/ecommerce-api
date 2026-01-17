@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | E-Commerce API</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-overlay bg-auth">
+    <div class="container small">
+        <h1>Login</h1>
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit" class="btn">Login</button>
+        </form>
+        <div id="message" class="status"></div>
+        <p><a href="/register.html">Register</a></p>
+        <p><a href="/">Back to Home</a></p>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageEl = document.getElementById('message');
+
+            try {
+                const res = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('token', data.token);
+                    messageEl.innerText = 'Login Successful! Redirecting...';
+                    messageEl.className = 'status text-success';
+                    setTimeout(() => window.location.href = '/', 1500);
+                } else {
+                    messageEl.innerText = 'Error: ' + data.message;
+                    messageEl.className = 'status text-danger';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home | E-Commerce API</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="home-split">
+      <div class="intro-section">
+        <img
+          src="https://gifdb.com/images/high/like-a-glove-roland-0xzc4fbos5cko10i.webp"
+          class="store-icon"
+          alt="Store"
+        />
+        <h1 style="font-size: 2.5em; margin-bottom: 10px">
+          E-Commerce API System
+        </h1>
+        <p style="color: #333; font-size: 1.2em">Select a portal to begin</p>
+        <p style="color: #5dda5d; font-size: 1.2em" id="status"></p>
+      </div>
+
+      <div class="hub-container">
+        <a href="/products.html" class="hub-card">
+          <img
+            src="https://gifdb.com/images/high/kuru-kuru-kururin-spin-faster-nkjbo79bz96z3omo.webp"
+            class="hub-icon"
+            alt="Store"
+          />
+          <div class="hub-title">Visit Store</div>
+          <p style="font-size: 0.9em; color: #888">Browse products</p>
+        </a>
+        <a href="/admin.html" class="hub-card" id="adminDashboard">
+          <img
+            src="https://tenor.com/view/estrogen-endfield-arknights-gif-12387491961527300070.gif"
+            class="hub-icon"
+            alt="Admin"
+          />
+          <div class="hub-title">Admin Dashboard</div>
+          <p style="font-size: 0.9em; color: #888">Manage inventory</p>
+        </a>
+
+        <a href="/login.html" id="authLink" class="hub-card">
+          <img
+            src="https://tenor.com/view/lock-in-locked-in-lock-tf-in-cat-cat-meme-gif-13335816645637017379.gif"
+            class="hub-icon"
+            id="authIcon"
+            alt="Auth"
+          />
+          <div class="hub-title" id="authTitle">Login</div>
+          <p style="font-size: 0.9em; color: #888" id="authDesc">
+            Access your account
+          </p>
+        </a>
+
+        <a href="/api-docs" class="hub-card">
+          <img
+            src="https://tenor.com/view/steins-gate-anime-gif-14686965.gif"
+            class="hub-icon"
+            alt="Docs"
+          />
+          <div class="hub-title">API Docs</div>
+          <p style="font-size: 0.9em; color: #888">Swagger Documentation</p>
+        </a>
+      </div>
+    </div>
+
+    <script>
+      const token = localStorage.getItem("token");
+      const authLink = document.getElementById("authLink");
+      const authTitle = document.getElementById("authTitle");
+      const authDesc = document.getElementById("authDesc");
+      const authIcon = document.getElementById("authIcon");
+
+      const LOGIN_ICON = "https://tenor.com/view/lock-in-locked-in-lock-tf-in-cat-cat-meme-gif-13335816645637017379.gif";
+      const LOGOUT_ICON = "https://tenor.com/view/kimika-subahibi-wonderful-everyday-subahibi-kimika-tachibana-kimika-gif-2379845125352183587.gif";
+
+      if (token) {
+        authTitle.innerText = "Logout";
+        authDesc.innerText = "Sign out of session";
+        authIcon.src = LOGOUT_ICON;
+        authLink.href = "#";
+        authLink.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (confirm("Log out now?")) {
+            localStorage.removeItem("token");
+            window.location.reload();
+          }
+        });
+      }
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        if (payload.role !== "admin") {
+          document.getElementById("adminDashboard").remove();
+        }
+        document.getElementById("status").innerText = "Logged in as: " + payload.username + " (" + payload.role + ")";
+      } catch (e) {
+        document.getElementById("adminDashboard").remove();
+        document.getElementById("status").innerText = "Not logged in";
+      }
+    </script>
+  </body>
+</html>

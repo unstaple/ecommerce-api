@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Storefront</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="bg-overlay bg-store">
+    <div class="container">
+      <div class="header-split">
+        <h1>Our Products</h1>
+        <div>
+          <a href="/cart.html" class="btn auto-width">
+            View Cart 🛒 <span id="cartCount" class="cart-badge">0</span>
+          </a>
+          <a href="/" class="btn auto-width"> Home </a>
+        </div>
+      </div>
+
+      <div id="product-list" class="grid">
+        <div class="loading-text">Loading products...</div>
+      </div>
+    </div>
+
+    <script>
+      async function loadProducts() {
+        const list = document.getElementById("product-list");
+        try {
+          const res = await fetch("/api/v1/products?t=" + new Date().getTime());
+          const products = await res.json();
+
+          list.innerHTML = "";
+
+          if (products.length === 0) {
+            list.innerHTML = '<p class="loading-text">No products found.</p>';
+            return;
+          }
+
+          products.forEach((p) => {
+            const card = document.createElement("div");
+
+            let stockClass = "stock";
+            let stockText = `📦 Stock: ${p.stock}`;
+            if (!p.stock || p.stock < 1) {
+                stockClass += " stock-low";
+                stockText = "📦 Stock: Out of Stock";
+            }
+
+            card.className = "card";
+            card.innerHTML = `
+                <div>
+                    <h3>${p.name}</h3>
+                    <img src="https://placehold.co/300x200/png?text=${encodeURIComponent(p.name)}" 
+                        alt="${p.name}" class="card-img">
+                    <p>${p.description || "No description"}</p>
+                </div>
+                <div>
+                    <div class="price">${p.price} ฿</div>
+                    <div class="${stockClass}">${stockText}</div>
+                    <button class="btn" onclick="addToCart('${p._id}', '${p.name}', ${p.price}, ${p.stock})">Add to Cart 🛒</button>
+                </div>
+            `;
+            list.appendChild(card);
+          });
+          updateCartCount();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      function addToCart(id, name, price, maxStock) {
+        let qty = prompt(
+          `How many "${name}" do you want to buy? (Max: ${maxStock})`,
+          "1",
+        );
+
+        if (qty === null || qty.trim() === "") return;
+
+        qty = parseInt(qty);
+        if (isNaN(qty) || qty < 1) {
+          alert("Please enter a valid number (1 or more).");
+          return;
+        }
+
+        let cart = JSON.parse(localStorage.getItem("cart")) || [];
+        const existingItem = cart.find((item) => item.id === id);
+
+        let currentQtyInCart = existingItem ? existingItem.quantity : 0;
+        let totalFutureQty = currentQtyInCart + qty;
+
+        if (totalFutureQty > maxStock) {
+          alert(
+            `❌ Stock Error!\n\nWe only have ${maxStock} in stock.\nYou already have ${currentQtyInCart} in your cart.\nYou cannot add ${qty} more.`,
+          );
+          return;
+        }
+
+        if (existingItem) {
+          existingItem.quantity += qty;
+        } else {
+          cart.push({ id, name, price, quantity: qty });
+        }
+
+        localStorage.setItem("cart", JSON.stringify(cart));
+        alert(`✅ Added ${qty} x ${name} to cart!`);
+        updateCartCount();
+      }
+
+      function updateCartCount() {
+        const cart = JSON.parse(localStorage.getItem("cart")) || [];
+        const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+        const badge = document.getElementById("cartCount");
+        if (totalCount > 0) {
+          badge.style.display = "inline-block";
+          badge.innerText = totalCount;
+        } else {
+          badge.style.display = "none";
+        }
+      }
+
+      loadProducts();
+    </script>
+  </body>
+</html>
