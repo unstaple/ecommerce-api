@@ -1,7 +1,7 @@
 # E-Commerce API Project
 ## See README.th.md for Thai language
 
-This project is a RESTful API implementation for an e-commerce system, developed to learn web development, API design, and to pass the class.
+This project is a RESTful API implementation for an e-commerce system, developed to learn about web development, API design, and to pass the class.
 
 ## Requirements that the project met
 
